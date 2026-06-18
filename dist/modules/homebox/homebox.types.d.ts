@@ -7,11 +7,11 @@ export interface HomeBoxEntity {
     updated_at?: string;
     [key: string]: any;
 }
-export interface HomeBoxEntityListResult {
-    data: HomeBoxEntity[];
-    total: number;
+export interface HomeBoxEntityListResponse {
     page: number;
     pageSize: number;
+    total: number;
+    items: HomeBoxEntity[];
 }
 export interface HomeBoxTreeItem {
     id: string;
@@ -27,6 +27,6 @@ export interface HomeBoxApiError {
     message: string;
     statusCode: number;
 }
-export type HomeBoxEntitiesResponse = HomeBoxEntityListResult;
+export type HomeBoxEntitiesResponse = HomeBoxEntityListResponse;
 export type HomeBoxLocationsResponse = HomeBoxTreeItem[];
 //# sourceMappingURL=homebox.types.d.ts.map
