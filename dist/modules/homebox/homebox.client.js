@@ -27,6 +27,7 @@ export class HomeBoxClient {
                 throw new Error(`HomeBox API error: ${response.status}`);
             }
             const data = await response.json();
+            logger.info({ endpoint, response: data }, 'HomeBoxClient raw response');
             return data;
         }
         catch (err) {
@@ -48,8 +49,26 @@ export class HomeBoxClient {
     async listLocations(withItems = false) {
         return this.request(`/api/v1/entities/tree?withItems=${withItems}`);
     }
-    async getLocationById(id) {
-        return this.request(`/api/v1/entities/${id}`);
+    async createEntity(payload) {
+        logger.info({ endpoint: '/api/v1/entities', payload }, 'Creating entity');
+        return this.request('/api/v1/entities', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+    async updateEntity(id, payload) {
+        logger.info({ endpoint: `/api/v1/entities/${id}`, payload }, 'Updating entity');
+        return this.request(`/api/v1/entities/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+        });
+    }
+    async moveEntity(itemId, parentId) {
+        logger.info({ endpoint: `/api/v1/entities/${itemId}`, parentId }, 'Moving entity');
+        return this.request(`/api/v1/entities/${itemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ parentId }),
+        });
     }
 }
 //# sourceMappingURL=homebox.client.js.map

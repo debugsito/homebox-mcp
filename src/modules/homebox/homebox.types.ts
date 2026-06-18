@@ -9,11 +9,11 @@ export interface HomeBoxEntity {
   [key: string]: any;
 }
 
-export interface HomeBoxEntityListResult {
-  data: HomeBoxEntity[];
-  total: number;
+export interface HomeBoxEntityListResponse {
   page: number;
   pageSize: number;
+  total: number;
+  items: HomeBoxEntity[];
 }
 
 export interface HomeBoxTreeItem {
@@ -33,5 +33,5 @@ export interface HomeBoxApiError {
   statusCode: number;
 }
 
-export type HomeBoxEntitiesResponse = HomeBoxEntityListResult;
+export type HomeBoxEntitiesResponse = HomeBoxEntityListResponse;
 export type HomeBoxLocationsResponse = HomeBoxTreeItem[];

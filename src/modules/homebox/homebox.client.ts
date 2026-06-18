@@ -4,8 +4,23 @@ import type {
   HomeBoxEntitiesResponse,
   HomeBoxLocationsResponse,
   HomeBoxEntity,
-
 } from './homebox.types.js';
+
+export interface CreateEntityPayload {
+  name: string;
+  description?: string;
+  parentId?: string;
+  quantity?: number;
+  entityTypeId?: string;
+  tagIds?: string[];
+}
+
+export interface UpdateEntityPayload {
+  parentId?: string | null;
+  quantity?: number;
+  entityTypeId?: string;
+  tagIds?: string[];
+}
 
 export class HomeBoxClient {
   private baseUrl: string;
@@ -43,6 +58,7 @@ export class HomeBoxClient {
       }
 
       const data = await response.json() as T;
+      logger.info({ endpoint, response: data }, 'HomeBoxClient raw response');
       return data;
     } catch (err) {
       const duration = Date.now() - start;
@@ -74,7 +90,27 @@ export class HomeBoxClient {
     );
   }
 
-  async getLocationById(id: string): Promise<HomeBoxEntity> {
-    return this.request<HomeBoxEntity>(`/api/v1/entities/${id}`);
+  async createEntity(payload: CreateEntityPayload): Promise<HomeBoxEntity> {
+    logger.info({ endpoint: '/api/v1/entities', payload }, 'Creating entity');
+    return this.request<HomeBoxEntity>('/api/v1/entities', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateEntity(id: string, payload: UpdateEntityPayload): Promise<HomeBoxEntity> {
+    logger.info({ endpoint: `/api/v1/entities/${id}`, payload }, 'Updating entity');
+    return this.request<HomeBoxEntity>(`/api/v1/entities/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async moveEntity(itemId: string, parentId: string): Promise<HomeBoxEntity> {
+    logger.info({ endpoint: `/api/v1/entities/${itemId}`, parentId }, 'Moving entity');
+    return this.request<HomeBoxEntity>(`/api/v1/entities/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ parentId }),
+    });
   }
 }
