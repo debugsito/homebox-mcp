@@ -1,0 +1,36 @@
+{
+  "name": "inventory-ai-api",
+  "version": "0.1.0",
+  "description": "Backend API layer between HomeBox and AI assistants",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^11.3.0",
+    "zod": "^3.24.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.2",
+    "eslint": "^9.18.0",
+    "@eslint/js": "^9.18.0",
+    "typescript-eslint": "^8.21.0",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
