@@ -5,6 +5,11 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     HOMEBOX_URL: z.string().url(),
     HOMEBOX_API_KEY: z.string().min(1),
+    AI_PROVIDER: z.enum(['groq', 'gemini', 'minimax']).default('groq'),
+    GROQ_API_KEY: z.string().min(1),
+    GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+    MINIMAX_API_KEY: z.string().optional(),
+    MINIMAX_MODEL: z.string().default('minimax/MiniMax-M2.7'),
 });
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {

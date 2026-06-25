@@ -8,6 +8,7 @@ import { UpdateItemTool } from './homebox/update-item.tool.js';
 import { MoveItemTool } from './homebox/move-item.tool.js';
 import { ResolveLocationTool } from './homebox/resolve-location.tool.js';
 import { ResolveItemTool } from './homebox/resolve-item.tool.js';
+import { FindItemTool } from './homebox/find-item.tool.js';
 
 // Register all tools
 toolRegistry.register(new SearchItemTool());
@@ -19,6 +20,7 @@ toolRegistry.register(new UpdateItemTool());
 toolRegistry.register(new MoveItemTool());
 toolRegistry.register(new ResolveLocationTool());
 toolRegistry.register(new ResolveItemTool());
+toolRegistry.register(new FindItemTool());
 
 export { toolRegistry } from './tool.registry.js';
 export type { Tool, ToolExecutionContext, ToolRunRequest, ToolRunResponse } from './tool.types.js';
