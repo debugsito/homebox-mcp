@@ -65,7 +65,7 @@ ruta completa (`Homie > Cuarto Oficina > Escritorio > Cajón 1`) en una llamada.
 | `HOMEBOX_API_KEY` | — | API key de HomeBox |
 | `AI_PROVIDER` | `groq` | `groq` \| `gemini` \| `minimax` |
 | `GROQ_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=groq` |
-| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Modelo de Groq |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Modelo de Groq |
 | `GEMINI_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=gemini` |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Modelo de Gemini, el que analiza las fotos |
 | `MCP_AUTH_TOKEN` | — | Token del MCP por HTTP. Sin él, `/mcp` rechaza todo |

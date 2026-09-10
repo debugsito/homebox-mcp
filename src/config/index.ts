@@ -8,7 +8,8 @@ const envSchema = z.object({
   HOMEBOX_API_KEY: z.string().min(1),
   AI_PROVIDER: z.enum(['groq', 'gemini', 'minimax']).default('groq'),
   GROQ_API_KEY: z.string().optional(),
-  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  // Groq retiró los llama-3.x; gpt-oss-120b es el mayor con tool-calling.
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   MINIMAX_API_KEY: z.string().optional(),
