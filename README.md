@@ -70,6 +70,8 @@ ruta completa (`Homie > Cuarto Oficina > Escritorio > Cajón 1`) en una llamada.
 | `GEMINI_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=gemini` |
 | `GEMINI_MODEL` | `gemini-3.6-flash` | Modelo de Gemini, el que analiza las fotos |
 | `MCP_AUTH_TOKEN` | — | Token del MCP por HTTP. Sin él, `/mcp` rechaza todo |
+| `TELEGRAM_BOT_TOKEN` | — | Token de BotFather. Sin él, el bot no arranca |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | — | Chat ids autorizados, separados por comas |
 
 ## MCP
 

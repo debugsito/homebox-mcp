@@ -15,6 +15,17 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   MINIMAX_API_KEY: z.string().optional(),
   MINIMAX_MODEL: z.string().default('minimax/MiniMax-M2.7'),
+  // El bot solo arranca si hay token; sin allowlist no responde a nadie.
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_ALLOWED_CHAT_IDS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      (v ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    ),
   // Sin token, el transporte HTTP del MCP rechaza todo.
   MCP_AUTH_TOKEN: z.string().min(32, 'MCP_AUTH_TOKEN debe tener al menos 32 caracteres').optional(),
 });
