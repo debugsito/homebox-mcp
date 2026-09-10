@@ -20,6 +20,7 @@ function mockFetch(responder: (url: string, method: string) => unknown) {
     return {
       ok: true,
       status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => responder(url, method),
     } as Response;
   });

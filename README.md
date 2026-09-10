@@ -51,6 +51,7 @@ npm run dev
 
 `find_item` · `search_item` · `get_item` · `list_items` · `list_locations`
 `resolve_item` · `resolve_location` · `create_item` · `update_item` · `move_item`
+`attach_photo`
 
 `find_item` es la preferida para "¿dónde está X?": resuelve el nombre y devuelve la
 ruta completa (`Homie > Cuarto Oficina > Escritorio > Cajón 1`) en una llamada.
@@ -105,6 +106,8 @@ una ubicación de un objeto:
   `PUT` con la entidad completa; el cliente lo resuelve leyendo y fusionando.
 - La ruta completa de un objeto sale de `GET /entities/{id}/path`. El campo `parent` que
   trae la entidad solo tiene el contenedor inmediato.
+- `POST /entities/{id}/attachments` responde `201` con **la entidad entera**, no con el
+  adjunto creado. Hay que localizarlo dentro de su lista `attachments`.
 
 ## Arquitectura
 

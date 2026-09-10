@@ -52,6 +52,28 @@ export interface CreateEntityTypePayload {
   icon?: string;
 }
 
+export type AttachmentType = 'photo' | 'manual' | 'warranty' | 'attachment' | 'receipt';
+
+export interface UploadAttachmentPayload {
+  file: Uint8Array;
+  filename: string;
+  mimeType: string;
+  /** `photo` marcada como primary es la que HomeBox usa de miniatura. */
+  type?: AttachmentType;
+  primary?: boolean;
+  title?: string;
+}
+
+export interface EntityAttachment {
+  id: string;
+  title: string;
+  type: string;
+  mimeType: string;
+  primary: boolean;
+  path?: string;
+  createdAt?: string;
+}
+
 export class HomeBoxClient {
   private baseUrl: string;
   private apiKey: string;
@@ -69,10 +91,14 @@ export class HomeBoxClient {
     const start = Date.now();
 
     try {
+      // Con FormData hay que dejar que fetch ponga el boundary del multipart;
+      // fijar Content-Type a mano rompe la subida.
+      const esMultipart = options.body instanceof FormData;
+
       const response = await fetch(url, {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          ...(esMultipart ? {} : { 'Content-Type': 'application/json' }),
           Authorization: `Bearer ${this.apiKey}`,
           ...options.headers,
         },
@@ -85,6 +111,11 @@ export class HomeBoxClient {
         const errorBody = await response.text();
         logger.error({ endpoint, status: response.status, error: errorBody }, 'HomeBox API error');
         throw new Error(`HomeBox API error: ${response.status}`);
+      }
+
+      // Un 204 no trae cuerpo y response.json() reventaria.
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return undefined as T;
       }
 
       return await response.json() as T;
@@ -145,6 +176,48 @@ export class HomeBoxClient {
     return this.request<EntityPathSegment[]>(`/api/v1/entities/${id}/path`);
   }
 
+  /**
+   * Sube un adjunto. Una `photo` marcada como primary pasa a ser la miniatura
+   * de la ficha, que es lo que se quiere al inventariar desde una foto.
+   */
+  async uploadAttachment(
+    entityId: string,
+    payload: UploadAttachmentPayload
+  ): Promise<EntityAttachment> {
+    const form = new FormData();
+    const blob = new Blob([payload.file], { type: payload.mimeType });
+
+    form.append('file', blob, payload.filename);
+    form.append('type', payload.type ?? 'photo');
+    form.append('primary', String(payload.primary ?? false));
+    form.append('name', payload.title ?? payload.filename);
+
+    logger.debug(
+      { entityId, bytes: payload.file.byteLength, mimeType: payload.mimeType },
+      'Uploading attachment'
+    );
+
+    // El endpoint responde 201 con la entidad entera, no con el adjunto, asi
+    // que hay que sacarlo de su lista.
+    const entity = await this.request<HomeBoxEntity>(
+      `/api/v1/entities/${entityId}/attachments`,
+      { method: 'POST', body: form }
+    );
+
+    const adjunto = nuevoAdjunto(entity.attachments, payload.title ?? payload.filename);
+    if (!adjunto) {
+      throw new Error('HomeBox aceptó la subida pero no devolvió el adjunto');
+    }
+
+    return adjunto;
+  }
+
+  async deleteAttachment(entityId: string, attachmentId: string): Promise<void> {
+    await this.request<unknown>(`/api/v1/entities/${entityId}/attachments/${attachmentId}`, {
+      method: 'DELETE',
+    });
+  }
+
   /** Los tipos separan ubicaciones de objetos mediante isLocation. */
   async listEntityTypes(): Promise<EntityType[]> {
     return this.request<EntityType[]>('/api/v1/entity-types');
@@ -199,4 +272,25 @@ export class HomeBoxClient {
     logger.debug({ entityId: itemId, parentId }, 'Moving entity');
     return this.patchEntity(itemId, { parentId });
   }
+}
+
+/**
+ * Identifica el adjunto recien subido dentro de la entidad que devuelve el
+ * POST. Prefiere el que coincide por titulo; si hay varios, el mas reciente.
+ */
+function nuevoAdjunto(
+  attachments: EntityAttachment[] | undefined,
+  titulo: string
+): EntityAttachment | undefined {
+  const lista = attachments ?? [];
+  if (lista.length === 0) {
+    return undefined;
+  }
+
+  const porTitulo = lista.filter((a) => a.title === titulo);
+  const candidatos = porTitulo.length > 0 ? porTitulo : lista;
+
+  return candidatos.reduce((mejor, actual) =>
+    (actual.createdAt ?? '') >= (mejor.createdAt ?? '') ? actual : mejor
+  );
 }

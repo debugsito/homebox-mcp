@@ -10,10 +10,10 @@ const SOLO_LECTURA = [
   'resolve_item',
   'resolve_location',
 ];
-const ESCRITURA = ['create_item', 'update_item', 'move_item'];
+const ESCRITURA = ['create_item', 'update_item', 'move_item', 'attach_photo'];
 
 describe('anotaciones de las tools', () => {
-  it('registra las 10 tools', () => {
+  it('registra las 11 tools', () => {
     expect(toolRegistry.listNames().sort()).toEqual([...SOLO_LECTURA, ...ESCRITURA].sort());
   });
 
@@ -27,8 +27,8 @@ describe('anotaciones de las tools', () => {
     expect(toolRegistry.get(name)?.readOnly).toBe(false);
   });
 
-  it('crear es aditivo, no destructivo', () => {
-    expect(toolRegistry.get('create_item')?.destructive).toBe(false);
+  it.each(['create_item', 'attach_photo'])('%s es aditiva, no destructiva', (name) => {
+    expect(toolRegistry.get(name)?.destructive).toBe(false);
   });
 
   it.each(['update_item', 'move_item'])('%s sí es destructiva: cambia algo existente', (name) => {

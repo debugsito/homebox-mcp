@@ -5,6 +5,8 @@ import {
   EntityPathSegment,
   EntityType,
   CreateEntityTypePayload,
+  UploadAttachmentPayload,
+  EntityAttachment,
 } from './homebox.client.js';
 import type {
   HomeBoxEntitiesResponse,
@@ -60,6 +62,15 @@ export class HomeBoxService {
 
   async getLocationById(id: string): Promise<HomeBoxEntity> {
     return this.client.getEntityById(id);
+  }
+
+  async uploadAttachment(
+    entityId: string,
+    payload: UploadAttachmentPayload
+  ): Promise<EntityAttachment> {
+    const result = await this.client.uploadAttachment(entityId, payload);
+    this.notifyChange();
+    return result;
   }
 
   async listEntityTypes(): Promise<EntityType[]> {
