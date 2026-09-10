@@ -19,3 +19,9 @@ pnpm-debug.log*
 .tsbuildinfo
 coverage/
 dist/
+# Fotos del inventario: el repo es público, no deben acabar aquí
+lotes/**/fotos/
+lotes/**/*.jpg
+lotes/**/*.jpeg
+lotes/**/*.png
+lotes/**/*.webp
