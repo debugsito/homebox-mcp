@@ -38,7 +38,10 @@ export function getToolsForLLM(): OpenAIFunction[] {
 export function toolSchemaToJSONSchema(schema: z.ZodType<unknown>): JSONSchemaDefinition {
   const converted = zodToJsonSchema(schema, {
     $refStrategy: 'none',
-    target: 'openApi3',
+    // jsonSchema7 y no openApi3: este ultimo emite exclusiveMinimum como
+    // booleano al estilo Draft-4, y los proveedores validan contra 2020-12,
+    // donde ese campo tiene que ser un numero. Groq lo rechaza con un 400.
+    target: 'jsonSchema7',
   }) as Record<string, unknown>;
 
   delete converted.$schema;

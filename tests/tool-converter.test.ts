@@ -50,6 +50,30 @@ describe('toolSchemaToJSONSchema', () => {
     expect(json.$schema).toBeUndefined();
   });
 
+  it('emite exclusiveMinimum como número, no como booleano', () => {
+    const json = toolSchemaToJSONSchema(z.object({ limit: z.number().int().positive() }));
+
+    // openApi3 lo emitía como `true` (Draft-4) y Groq devolvía 400 al validar
+    // contra JSON Schema 2020-12.
+    expect(json.properties.limit).toMatchObject({ type: 'integer', exclusiveMinimum: 0 });
+  });
+
+  it('ningún esquema de las tools reales lleva booleanos donde van números', async () => {
+    const { getToolsForLLM } = await import('../src/modules/ai/tool-converter.js');
+    const numericos = ['exclusiveMinimum', 'exclusiveMaximum', 'minimum', 'maximum'];
+
+    for (const tool of getToolsForLLM()) {
+      for (const prop of Object.values(tool.function.parameters.properties)) {
+        for (const campo of numericos) {
+          const valor = (prop as Record<string, unknown>)[campo];
+          if (valor !== undefined) {
+            expect(typeof valor, `${tool.function.name}.${campo}`).toBe('number');
+          }
+        }
+      }
+    }
+  });
+
   it('devuelve un objeto vacio valido para un schema sin campos', () => {
     expect(toolSchemaToJSONSchema(z.object({}))).toEqual({
       type: 'object',
