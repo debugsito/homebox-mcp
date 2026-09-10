@@ -14,7 +14,9 @@ export class GroqProvider implements AIProvider {
 
   constructor() {
     this.model = config.GROQ_MODEL;
-    this.apiKey = config.GROQ_API_KEY;
+    // config exige la clave del proveedor activo; esto cubre el caso de
+    // instanciar Groq teniendo otro proveedor seleccionado.
+    this.apiKey = config.GROQ_API_KEY ?? '';
   }
 
   async chat(messages: AIMessage[]): Promise<AIChatResponse> {

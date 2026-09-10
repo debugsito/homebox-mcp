@@ -7,15 +7,35 @@ const envSchema = z.object({
   HOMEBOX_URL: z.string().url(),
   HOMEBOX_API_KEY: z.string().min(1),
   AI_PROVIDER: z.enum(['groq', 'gemini', 'minimax']).default('groq'),
-  GROQ_API_KEY: z.string().min(1),
+  GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   MINIMAX_API_KEY: z.string().optional(),
   MINIMAX_MODEL: z.string().default('minimax/MiniMax-M2.7'),
   // Sin token, el transporte HTTP del MCP rechaza todo.
   MCP_AUTH_TOKEN: z.string().min(32, 'MCP_AUTH_TOKEN debe tener al menos 32 caracteres').optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+// Solo se exige la clave del proveedor elegido, no la de todos.
+const KEY_POR_PROVEEDOR = {
+  groq: 'GROQ_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  minimax: 'MINIMAX_API_KEY',
+} as const;
+
+const parsed = envSchema
+  .superRefine((env, ctx) => {
+    const required = KEY_POR_PROVEEDOR[env.AI_PROVIDER];
+    if (!env[required]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [required],
+        message: `${required} es obligatoria cuando AI_PROVIDER=${env.AI_PROVIDER}`,
+      });
+    }
+  })
+  .safeParse(process.env);
 
 if (!parsed.success) {
   console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors);

@@ -3,4 +3,5 @@
 process.env.HOMEBOX_URL ??= 'http://homebox.test';
 process.env.HOMEBOX_API_KEY ??= 'test-key';
 process.env.GROQ_API_KEY ??= 'test-key';
+process.env.GEMINI_API_KEY ??= 'test-key';
 process.env.NODE_ENV = 'test';

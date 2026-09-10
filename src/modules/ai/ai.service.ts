@@ -39,6 +39,18 @@ export class AIService {
     this.provider = this.createProvider();
   }
 
+  /** Antes se reportaba GROQ_MODEL fuera cual fuera el proveedor. */
+  private get model(): string {
+    switch (config.AI_PROVIDER) {
+      case 'gemini':
+        return config.GEMINI_MODEL;
+      case 'minimax':
+        return config.MINIMAX_MODEL;
+      default:
+        return config.GROQ_MODEL;
+    }
+  }
+
   private createProvider(): AIProvider {
     const { AI_PROVIDER } = config;
 
@@ -69,7 +81,7 @@ export class AIService {
     logger.info({
       historyLength: history.length,
       provider: config.AI_PROVIDER,
-      model: config.GROQ_MODEL,
+      model: this.model,
       toolsCount: tools.length,
     }, 'AI chat started');
 
@@ -136,14 +148,14 @@ export class AIService {
         tokensUsed: response.usage.totalTokens,
         iterations: iteration + 1,
         provider: config.AI_PROVIDER,
-        model: config.GROQ_MODEL,
+        model: this.model,
         toolsUsed: executedTools.map((t) => t.name),
       }, 'AI chat completed');
 
       return {
         response: choice.content || 'No pude generar una respuesta.',
         provider: config.AI_PROVIDER,
-        model: config.GROQ_MODEL,
+        model: this.model,
         toolCalls: executedTools,
       };
     }
@@ -152,7 +164,7 @@ export class AIService {
     return {
       response: 'La conversación se extendió demasiado. Por favor reformula tu pregunta.',
       provider: config.AI_PROVIDER,
-      model: config.GROQ_MODEL,
+      model: this.model,
       toolCalls: executedTools,
     };
   }
