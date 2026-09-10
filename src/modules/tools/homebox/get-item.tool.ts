@@ -1,4 +1,4 @@
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { getItemInputSchema } from '../tool.schemas.js';
 import type { Tool } from '../tool.types.js';
@@ -10,8 +10,8 @@ export class GetItemTool implements Tool {
 
   private service: HomeBoxService;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
   }
 
   async execute(input: unknown) {

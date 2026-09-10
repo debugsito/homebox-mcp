@@ -1,27 +1,29 @@
-import { HomeBoxService } from '../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../homebox/homebox.service.js';
 import { logger } from '../../utils/logger.js';
 import { normalizeString, matchScore } from './location-path.builder.js';
 import type { ResolvedItem, ResolverResult, HomeBoxEntity } from './resolver.types.js';
+
+const DESCRIPTION_MATCH_SCORE = 10;
 
 export class ItemResolverService {
   private service: HomeBoxService;
   private cachedItems: HomeBoxEntity[] | null = null;
   private cacheTime = 0;
-  private readonly CACHE_TTL_MS = 60_000; // 1 minute cache
+  private readonly CACHE_TTL_MS = 60_000;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
+    this.service.onChange(() => this.invalidateCache());
   }
 
   private async getItems(): Promise<HomeBoxEntity[]> {
     const now = Date.now();
-    if (this.cachedItems && (now - this.cacheTime) < this.CACHE_TTL_MS) {
+    if (this.cachedItems && now - this.cacheTime < this.CACHE_TTL_MS) {
       return this.cachedItems;
     }
 
-    // Fetch a reasonable number of items
-    const result = await this.service.listItems(1, 200);
-    this.cachedItems = result.items;
+    // Paginado completo: con un tope fijo los items sobrantes eran invisibles.
+    this.cachedItems = (await this.service.listAllItems()) as HomeBoxEntity[];
     this.cacheTime = now;
     logger.debug({ count: this.cachedItems.length }, 'Items fetched and cached');
     return this.cachedItems;
@@ -30,62 +32,49 @@ export class ItemResolverService {
   async resolve(query: string): Promise<ResolverResult<ResolvedItem>> {
     const start = Date.now();
     const normalizedQuery = normalizeString(query);
-
-    logger.info({ query, normalizedQuery }, 'Resolving item');
-
     const items = await this.getItems();
 
-    const matches: Array<{ item: HomeBoxEntity; score: number }> = [];
+    // Un item puede matchear por nombre y por descripcion; nos quedamos con el
+    // mejor score en vez de encolarlo dos veces.
+    const best = new Map<string, { item: HomeBoxEntity; score: number }>();
+
+    const consider = (item: HomeBoxEntity, score: number) => {
+      const previous = best.get(item.id);
+      if (!previous || score > previous.score) {
+        best.set(item.id, { item, score });
+      }
+    };
 
     for (const item of items) {
       const nameNorm = normalizeString(item.name);
-
       if (nameNorm.includes(normalizedQuery)) {
-        const score = matchScore(normalizedQuery, nameNorm);
-        matches.push({ item, score });
+        consider(item, matchScore(normalizedQuery, nameNorm));
       }
 
-      // Also check description if present
       if (item.description) {
         const descNorm = normalizeString(item.description);
         if (descNorm.includes(normalizedQuery)) {
-          matches.push({ item, score: 10 }); // Lower score for description match
+          consider(item, DESCRIPTION_MATCH_SCORE);
         }
       }
     }
 
-    // Sort by score descending
-    matches.sort((a, b) => b.score - a.score);
+    const resolved: ResolvedItem[] = [...best.values()]
+      .sort((a, b) => b.score - a.score)
+      .map(({ item }) => ({
+        id: item.id,
+        name: item.name,
+        normalizedName: normalizeString(item.name),
+      }));
 
-    // Remove duplicates (same id) keeping highest score
-    const seen = new Set<string>();
-    const resolved: ResolvedItem[] = [];
-    for (const { item } of matches) {
-      if (!seen.has(item.id)) {
-        seen.add(item.id);
-        resolved.push({
-          id: item.id,
-          name: item.name,
-          normalizedName: normalizeString(item.name),
-        });
-      }
-    }
-
-    const duration = Date.now() - start;
-    const ambiguous = resolved.length > 1;
-    const resolvedFlag = resolved.length === 1;
-
-    logger.info({
-      query,
-      normalizedQuery,
-      matchCount: resolved.length,
-      duration,
-      ambiguous,
-    }, 'Item resolution complete');
+    logger.debug(
+      { query, matchCount: resolved.length, duration: Date.now() - start },
+      'Item resolution complete'
+    );
 
     return {
-      resolved: resolvedFlag,
-      ambiguous,
+      resolved: resolved.length === 1,
+      ambiguous: resolved.length > 1,
       count: resolved.length,
       result: resolved,
       query,

@@ -1,4 +1,4 @@
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { listItemsInputSchema } from '../tool.schemas.js';
 import type { Tool } from '../tool.types.js';
@@ -10,8 +10,8 @@ export class ListItemsTool implements Tool {
 
   private service: HomeBoxService;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
   }
 
   async execute(input: unknown) {
@@ -24,8 +24,6 @@ export class ListItemsTool implements Tool {
     logger.debug({ tool: this.name, limit, page }, 'Executing list_items');
 
     const result = await this.service.listItems(page, limit);
-    logger.info({ tool: this.name, items: result.items }, 'Tool result from HomeBoxService');
-
     return result.items;
   }
 }

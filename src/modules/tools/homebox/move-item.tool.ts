@@ -1,4 +1,4 @@
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { moveItemInputSchema } from '../tool.schemas.js';
 import type { Tool } from '../tool.types.js';
@@ -10,8 +10,8 @@ export class MoveItemTool implements Tool {
 
   private service: HomeBoxService;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
   }
 
   async execute(input: unknown) {
@@ -21,7 +21,7 @@ export class MoveItemTool implements Tool {
     }
 
     const { itemId, parentId } = parsed.data;
-    logger.info({ tool: this.name, itemId, parentId }, 'Executing move_item');
+    logger.debug({ tool: this.name, itemId, parentId }, 'Executing move_item');
 
     return this.service.moveItem(itemId, parentId);
   }

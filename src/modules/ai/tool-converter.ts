@@ -1,15 +1,25 @@
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { z } from 'zod';
 import { toolRegistry } from '../tools/index.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ZodSchema = any;
+export interface JSONSchemaDefinition {
+  type: 'object';
+  properties: Record<string, unknown>;
+  required: string[];
+}
 
-/**
- * Converts our internal Tool registry to OpenAI-compatible function format.
- */
+export interface OpenAIFunction {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: JSONSchemaDefinition;
+  };
+}
+
+/** Convierte el registry interno al formato de funciones de OpenAI/Groq. */
 export function getToolsForLLM(): OpenAIFunction[] {
-  const tools = toolRegistry.getAll();
-
-  return tools.map((tool) => ({
+  return toolRegistry.getAll().map((tool) => ({
     type: 'function' as const,
     function: {
       name: tool.name,
@@ -20,92 +30,22 @@ export function getToolsForLLM(): OpenAIFunction[] {
 }
 
 /**
- * Unwrap ZodDefault and ZodOptional wrappers to get the base type definition.
- * Returns { isOptional, baseDef }
+ * La conversion anterior leia `_def.typeName` a mano y colapsaba enums, arrays
+ * y objetos anidados a `{type: 'string'}`. zod-to-json-schema los traduce bien.
+ * `$refStrategy: 'none'` los expande en linea, que es lo unico que aceptan las
+ * definiciones de funcion.
  */
-function unwrapZod(value: any): { isOptional: boolean; baseDef: any } {
-  let isOptional = false;
-  let current = value;
+export function toolSchemaToJSONSchema(schema: z.ZodType<unknown>): JSONSchemaDefinition {
+  const converted = zodToJsonSchema(schema, {
+    $refStrategy: 'none',
+    target: 'openApi3',
+  }) as Record<string, unknown>;
 
-  while (current && current._def) {
-    const typeName = current._def.typeName;
+  delete converted.$schema;
 
-    if (typeName === 'ZodOptional') {
-      isOptional = true;
-      current = current._def.innerType;
-    } else if (typeName === 'ZodDefault') {
-      // ZodDefault wraps ZodOptional, so if the inner is optional, mark it
-      const inner = current._def.innerType;
-      if (inner._def.typeName === 'ZodOptional') {
-        isOptional = true;
-        current = inner._def.innerType;
-      } else {
-        current = inner;
-      }
-    } else {
-      break;
-    }
-  }
-
-  return { isOptional, baseDef: current?._def };
-}
-
-/**
- * Convert a Zod schema to JSON Schema format for OpenAI API.
- */
-function toolSchemaToJSONSchema(schema: ZodSchema): JSONSchemaDefinition {
-  try {
-    const shape = schema._def?.shape?.();
-    if (!shape) {
-      return { type: 'object', properties: {}, required: [] };
-    }
-
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
-    for (const [key, value] of Object.entries(shape)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prop = value as any;
-      const { isOptional, baseDef } = unwrapZod(prop);
-
-      if (!baseDef) {
-        properties[key] = { type: 'string' };
-        continue;
-      }
-
-      if (baseDef.typeName === 'ZodString') {
-        properties[key] = { type: 'string' };
-      } else if (baseDef.typeName === 'ZodNumber') {
-        properties[key] = { type: 'number' };
-      } else if (baseDef.typeName === 'ZodBoolean') {
-        properties[key] = { type: 'boolean' };
-      } else {
-        properties[key] = { type: 'string' };
-      }
-
-      // Non-optional fields are required
-      if (!isOptional) {
-        required.push(key);
-      }
-    }
-
-    return { type: 'object', properties, required };
-  } catch {
-    return { type: 'object', properties: {}, required: [] };
-  }
-}
-
-interface OpenAIFunction {
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    parameters: JSONSchemaDefinition;
+  return {
+    type: 'object',
+    properties: (converted.properties as Record<string, unknown>) ?? {},
+    required: (converted.required as string[]) ?? [],
   };
-}
-
-interface JSONSchemaDefinition {
-  type: 'object';
-  properties: Record<string, unknown>;
-  required: string[];
 }

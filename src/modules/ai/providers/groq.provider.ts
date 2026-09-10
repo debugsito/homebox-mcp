@@ -39,14 +39,11 @@ export class GroqProvider implements AIProvider {
       body.tool_choice = 'auto';
     }
 
-    logger.info({
+    logger.debug({
       provider: 'groq',
       model: this.model,
       messageCount: messages.length,
-      hasTools: !!tools,
       toolsCount: tools?.length ?? 0,
-      toolNames: tools?.map(t => t.function.name) ?? [],
-      requestBody: JSON.stringify(body, null, 2),
     }, 'Groq API request');
 
     try {
@@ -71,14 +68,13 @@ export class GroqProvider implements AIProvider {
       const choice = data.choices[0];
       const msg = choice.message;
 
-      logger.info({
+      logger.debug({
         provider: 'groq',
         model: this.model,
         duration,
         tokens: data.usage,
         finishReason: choice.finish_reason,
-        responseContent: msg.content?.substring(0, 200),
-        toolCalls: msg.tool_calls?.map(t => ({ name: t.function.name, args: t.function.arguments })),
+        toolCalls: msg.tool_calls?.map(t => t.function.name),
       }, 'Groq API response');
 
       return mapGroqResponse(data);

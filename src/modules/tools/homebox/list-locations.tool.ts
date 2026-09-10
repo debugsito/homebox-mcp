@@ -1,4 +1,4 @@
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { listLocationsInputSchema } from '../tool.schemas.js';
 import { buildLocationPaths } from '../../resolvers/location-path.builder.js';
@@ -12,8 +12,8 @@ export class ListLocationsTool implements Tool {
 
   private service: HomeBoxService;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
   }
 
   async execute(input: unknown) {

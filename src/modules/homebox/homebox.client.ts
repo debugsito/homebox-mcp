@@ -15,11 +15,27 @@ export interface CreateEntityPayload {
   tagIds?: string[];
 }
 
-export interface UpdateEntityPayload {
+/** Campos que acepta PATCH /entities/{id} (repo.EntityPatch). */
+export interface PatchEntityPayload {
   parentId?: string | null;
   quantity?: number;
   entityTypeId?: string;
   tagIds?: string[];
+}
+
+/**
+ * Campos que acepta PUT /entities/{id} (repo.EntityUpdate). PATCH ignora en
+ * silencio name y description, asi que renombrar obliga a pasar por PUT.
+ */
+export interface UpdateEntityPayload extends PatchEntityPayload {
+  name?: string;
+  description?: string;
+}
+
+export interface EntityPathSegment {
+  id: string;
+  name: string;
+  type: string;
 }
 
 export class HomeBoxClient {
@@ -57,9 +73,7 @@ export class HomeBoxClient {
         throw new Error(`HomeBox API error: ${response.status}`);
       }
 
-      const data = await response.json() as T;
-      logger.info({ endpoint, response: data }, 'HomeBoxClient raw response');
-      return data;
+      return await response.json() as T;
     } catch (err) {
       const duration = Date.now() - start;
       logger.error({ endpoint, duration, error: err }, 'HomeBox request failed');
@@ -90,27 +104,72 @@ export class HomeBoxClient {
     );
   }
 
+  /** Recorre todas las paginas. El inventario cabe de sobra en memoria. */
+  async listAllEntities(pageSize = 200): Promise<HomeBoxEntity[]> {
+    const all: HomeBoxEntity[] = [];
+
+    for (let page = 1; ; page++) {
+      const batch = await this.listEntities(page, pageSize);
+      all.push(...batch.items);
+
+      if (batch.items.length < pageSize || all.length >= batch.total) {
+        return all;
+      }
+    }
+  }
+
   async createEntity(payload: CreateEntityPayload): Promise<HomeBoxEntity> {
-    logger.info({ endpoint: '/api/v1/entities', payload }, 'Creating entity');
+    logger.debug({ name: payload.name, parentId: payload.parentId }, 'Creating entity');
     return this.request<HomeBoxEntity>('/api/v1/entities', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   }
 
-  async updateEntity(id: string, payload: UpdateEntityPayload): Promise<HomeBoxEntity> {
-    logger.info({ endpoint: `/api/v1/entities/${id}`, payload }, 'Updating entity');
+  /** Cadena de ancestros, de la raiz hasta la propia entidad. */
+  async getEntityPath(id: string): Promise<EntityPathSegment[]> {
+    return this.request<EntityPathSegment[]>(`/api/v1/entities/${id}/path`);
+  }
+
+  async patchEntity(id: string, payload: PatchEntityPayload): Promise<HomeBoxEntity> {
+    logger.debug({ entityId: id, fields: Object.keys(payload) }, 'Patching entity');
     return this.request<HomeBoxEntity>(`/api/v1/entities/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
   }
 
-  async moveEntity(itemId: string, parentId: string): Promise<HomeBoxEntity> {
-    logger.info({ endpoint: `/api/v1/entities/${itemId}`, parentId }, 'Moving entity');
-    return this.request<HomeBoxEntity>(`/api/v1/entities/${itemId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ parentId }),
+  /**
+   * PUT reemplaza la entidad entera, asi que primero se lee la actual y se
+   * fusionan los campos pedidos. Es el unico camino para name y description.
+   */
+  async updateEntity(id: string, payload: UpdateEntityPayload): Promise<HomeBoxEntity> {
+    const { name, description, ...patchable } = payload;
+
+    if (name === undefined && description === undefined) {
+      return this.patchEntity(id, patchable);
+    }
+
+    const current = await this.getEntityById(id);
+    const merged = {
+      ...current,
+      ...patchable,
+      id,
+      name: name ?? current.name,
+      description: description ?? current.description,
+      parentId: patchable.parentId !== undefined ? patchable.parentId : current.parent?.id ?? null,
+      entityTypeId: patchable.entityTypeId ?? current.entityType?.id,
+    };
+
+    logger.debug({ entityId: id, fields: Object.keys(payload) }, 'Updating entity via PUT');
+    return this.request<HomeBoxEntity>(`/api/v1/entities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(merged),
     });
+  }
+
+  async moveEntity(itemId: string, parentId: string): Promise<HomeBoxEntity> {
+    logger.debug({ entityId: itemId, parentId }, 'Moving entity');
+    return this.patchEntity(itemId, { parentId });
   }
 }

@@ -27,7 +27,7 @@ export class ResolveItemTool implements Tool {
     }
 
     const { query } = parsed.data as ResolveItemInput;
-    logger.info({ tool: this.name, query }, 'Executing resolve_item');
+    logger.debug({ tool: this.name, query }, 'Executing resolve_item');
 
     return this.resolver.resolve(query);
   }

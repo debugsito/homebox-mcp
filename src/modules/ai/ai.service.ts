@@ -67,21 +67,19 @@ export class AIService {
     const executedTools: ToolCallRecord[] = [];
 
     logger.info({
-      message,
       historyLength: history.length,
       provider: config.AI_PROVIDER,
       model: config.GROQ_MODEL,
       toolsCount: tools.length,
-      toolNames: tools.map(t => t.function.name),
     }, 'AI chat started');
 
     for (let iteration = 0; iteration < this.maxIterations; iteration++) {
-      logger.info({ iteration }, 'Sending request to AI provider');
+      logger.debug({ iteration }, 'Sending request to AI provider');
 
       const response = await this.provider.chatWithTools(messages, tools);
       const choice = response.message;
 
-      logger.info({
+      logger.debug({
         iteration,
         responseContent: choice.content?.substring(0, 200),
         toolCalls: choice.tool_calls?.map(t => ({ name: t.function.name, args: t.function.arguments })),
@@ -139,7 +137,7 @@ export class AIService {
         iterations: iteration + 1,
         provider: config.AI_PROVIDER,
         model: config.GROQ_MODEL,
-        executedTools,
+        toolsUsed: executedTools.map((t) => t.name),
       }, 'AI chat completed');
 
       return {
@@ -258,7 +256,7 @@ export class AIService {
     const { name, arguments: argsJson } = toolCall.function;
     const start = Date.now();
 
-    logger.info({ tool: name, args: argsJson }, 'Executing tool');
+    logger.debug({ tool: name }, 'Executing tool');
 
     try {
       const tool = toolRegistry.get(name);
@@ -269,7 +267,7 @@ export class AIService {
       const args = JSON.parse(argsJson) as Record<string, unknown>;
       const result = await tool.execute(args);
 
-      logger.info({ tool: name, duration: Date.now() - start, result }, 'Tool executed successfully');
+      logger.debug({ tool: name, duration: Date.now() - start }, 'Tool executed successfully');
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';

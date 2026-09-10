@@ -1,5 +1,5 @@
 import { ItemResolverService } from '../../resolvers/item-resolver.service.js';
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { normalizeSearchQuery } from '../../ai/query-normalizer.js';
 import { z } from 'zod';
@@ -8,8 +8,6 @@ import type { Tool } from '../tool.types.js';
 const findItemInputSchema = z.object({
   query: z.string().min(1, 'Query is required'),
 });
-
-type FindItemInput = z.infer<typeof findItemInputSchema>;
 
 export interface FindItemMatch {
   itemId: string;
@@ -30,15 +28,16 @@ export interface FindItemResult {
 
 export class FindItemTool implements Tool {
   public name = 'find_item';
-  public description = 'Find an item by name and get its current location with full path. Use this for questions like "where is X" or "where are my keys". Returns item details and location in one call.';
+  public description =
+    'Find an item by name and get its current location with full path. Use this for questions like "where is X" or "where are my keys". Returns item details and location in one call.';
   public inputSchema = findItemInputSchema;
 
   private itemResolver: ItemResolverService;
   private homeBoxService: HomeBoxService;
 
-  constructor() {
-    this.itemResolver = new ItemResolverService();
-    this.homeBoxService = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.homeBoxService = service;
+    this.itemResolver = new ItemResolverService(service);
   }
 
   async execute(input: unknown): Promise<FindItemResult> {
@@ -47,66 +46,56 @@ export class FindItemTool implements Tool {
       throw new Error(`Invalid input: ${parsed.error.message}`);
     }
 
-    const { query } = parsed.data as FindItemInput;
-    const cleanQuery = normalizeSearchQuery(query);
-
-    logger.info({ tool: this.name, query, cleanQuery }, 'Executing find_item');
+    const cleanQuery = normalizeSearchQuery(parsed.data.query);
+    logger.debug({ tool: this.name, query: cleanQuery }, 'Executing find_item');
 
     try {
       const resolution = await this.itemResolver.resolve(cleanQuery);
 
-      if (!resolution.resolved && resolution.count === 0) {
+      if (resolution.count === 0) {
         return { found: false };
       }
 
-      if (resolution.ambiguous) {
-        // Return all matches with their locations
-        const matches: FindItemMatch[] = [];
-
-        for (const item of resolution.result) {
-          const fullItem = await this.homeBoxService.getItemById(item.id);
-          const location = fullItem.parent;
-
-          matches.push({
-            itemId: item.id,
-            name: item.name,
-            description: fullItem.description,
-            locationId: location?.id ?? '',
-            locationName: location?.name ?? 'Unknown',
-            locationPath: (location as Record<string, unknown>)?.path as string ?? location?.name ?? 'Unknown',
-          });
-        }
-
-        return {
-          found: true,
-          ambiguous: true,
-          count: resolution.count,
-          matches,
-        };
-      }
-
-      // Single match - get full details with location
-      const item = resolution.result[0];
-      const fullItem = await this.homeBoxService.getItemById(item.id);
-      const location = fullItem.parent;
+      const matches = await Promise.all(
+        resolution.result.map((item) => this.describe(item.id, item.name))
+      );
 
       return {
         found: true,
-        ambiguous: false,
-        count: 1,
-        matches: [{
-          itemId: item.id,
-          name: item.name,
-          description: fullItem.description,
-          locationId: location?.id ?? '',
-          locationName: location?.name ?? 'Unknown',
-          locationPath: (location as Record<string, unknown>)?.path as string ?? location?.name ?? 'Unknown',
-        }],
+        ambiguous: resolution.ambiguous,
+        count: resolution.count,
+        matches,
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       logger.error({ tool: this.name, error: errorMessage }, 'find_item failed');
       return { found: false, error: errorMessage };
     }
+  }
+
+  /**
+   * La ruta completa sale de /entities/{id}/path. El campo parent que trae la
+   * entidad solo tiene el contenedor inmediato, sin sus ancestros.
+   */
+  private async describe(itemId: string, name: string): Promise<FindItemMatch> {
+    const [fullItem, path] = await Promise.all([
+      this.homeBoxService.getItemById(itemId),
+      this.homeBoxService.getItemPath(itemId).catch(() => []),
+    ]);
+
+    const location = fullItem.parent;
+    const ancestors = path.filter((segment) => segment.id !== itemId);
+    const locationPath = ancestors.length
+      ? ancestors.map((segment) => segment.name).join(' > ')
+      : location?.name ?? 'Unknown';
+
+    return {
+      itemId,
+      name,
+      description: fullItem.description,
+      locationId: location?.id ?? '',
+      locationName: location?.name ?? 'Unknown',
+      locationPath,
+    };
   }
 }

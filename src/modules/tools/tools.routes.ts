@@ -40,9 +40,7 @@ const routes: FastifyPluginAsync = async (fastify) => {
         const result = await tool.execute(input);
         const duration = Date.now() - start;
 
-        logger.info({ tool: toolName, result, resultType: typeof result, isArray: Array.isArray(result) }, 'Tool result received by runner');
-
-        let response: ToolRunResponse;
+                let response: ToolRunResponse;
         if (Array.isArray(result)) {
           response = {
             success: true,
@@ -60,7 +58,6 @@ const routes: FastifyPluginAsync = async (fastify) => {
           };
         }
 
-        logger.info({ tool: toolName, response }, 'Sending response');
         return reply.send(response);
       } catch (err) {
         const duration = Date.now() - start;

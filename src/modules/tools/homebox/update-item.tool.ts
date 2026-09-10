@@ -1,4 +1,4 @@
-import { HomeBoxService } from '../../homebox/homebox.service.js';
+import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
 import { logger } from '../../../utils/logger.js';
 import { updateItemInputSchema } from '../tool.schemas.js';
 import type { Tool } from '../tool.types.js';
@@ -10,8 +10,8 @@ export class UpdateItemTool implements Tool {
 
   private service: HomeBoxService;
 
-  constructor() {
-    this.service = new HomeBoxService();
+  constructor(service: HomeBoxService = homeBoxService) {
+    this.service = service;
   }
 
   async execute(input: unknown) {
@@ -21,7 +21,7 @@ export class UpdateItemTool implements Tool {
     }
 
     const { itemId, name, description, parentId, quantity } = parsed.data;
-    logger.info({ tool: this.name, itemId, name, description, parentId }, 'Executing update_item');
+    logger.debug({ tool: this.name, itemId, name, description, parentId }, 'Executing update_item');
 
     const payload: { name?: string; description?: string; parentId?: string; quantity?: number } = {};
     if (name !== undefined) payload.name = name;
