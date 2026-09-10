@@ -1,0 +1,14 @@
+{
+  "_comentario": "Copia este fichero por lote. Las fotos van en rutas relativas a este JSON.",
+  "ubicacionBase": "Homie > Cuarto Oficina > Escritorio > Cajón 1",
+  "objetos": [
+    {
+      "nombre": "Nombre específico y buscable",
+      "descripcion": "Una frase: para qué es o qué lo distingue de otros parecidos",
+      "tipo": "Cable",
+      "cantidad": 1,
+      "ubicacion": "Opcional. Solo si difiere de ubicacionBase",
+      "foto": "Opcional. Ruta relativa, p. ej. fotos/hdmi.jpg"
+    }
+  ]
+}
