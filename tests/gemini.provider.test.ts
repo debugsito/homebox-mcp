@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { toGeminiContents, GeminiProvider } from '../src/modules/ai/providers/gemini.provider.js';
 import type { AIMessage } from '../src/modules/ai/providers/ai-provider.interface.js';
 
@@ -51,7 +51,12 @@ describe('toGeminiContents', () => {
 });
 
 describe('GeminiProvider', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -126,14 +131,66 @@ describe('GeminiProvider', () => {
     });
   });
 
-  it('propaga el error de la API en vez de devolver texto vacío', async () => {
+  it('reintenta ante un 503 y acaba devolviendo la respuesta', async () => {
+    let llamadas = 0;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: false, status: 429, text: async () => 'rate limited' })) as unknown as typeof fetch
+      vi.fn(async () => {
+        llamadas++;
+        if (llamadas < 3) {
+          return { ok: false, status: 503, text: async () => 'overloaded' } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({ candidates: [{ content: { role: 'model', parts: [{ text: 'OK' }] } }] }),
+        } as Response;
+      })
+    );
+
+    const p = new GeminiProvider();
+    const promesa = p.chat([{ role: 'user', content: 'hola' }]);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect((await promesa).message.content).toBe('OK');
+    expect(llamadas).toBe(3);
+  });
+
+  it('no reintenta ante un 400, que no se arregla esperando', async () => {
+    let llamadas = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        llamadas++;
+        return { ok: false, status: 400, text: async () => 'bad request' } as Response;
+      })
     );
 
     await expect(new GeminiProvider().chat([{ role: 'user', content: 'hola' }])).rejects.toThrow(
-      'Gemini API error: 429'
+      'Gemini API error: 400'
+    );
+    expect(llamadas).toBe(1);
+  });
+
+  it('se rinde tras agotar los reintentos', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 503, text: async () => 'overloaded' })) as unknown as typeof fetch
+    );
+
+    const promesa = new GeminiProvider().chat([{ role: 'user', content: 'hola' }]);
+    const esperado = expect(promesa).rejects.toThrow('Gemini API error: 503');
+    await vi.advanceTimersByTimeAsync(60_000);
+    await esperado;
+  });
+
+  it('propaga el error de la API en vez de devolver texto vacío', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 403, text: async () => 'forbidden' })) as unknown as typeof fetch
+    );
+
+    await expect(new GeminiProvider().chat([{ role: 'user', content: 'hola' }])).rejects.toThrow(
+      'Gemini API error: 403'
     );
   });
 });

@@ -7,6 +7,11 @@ import type {
   AIToolDefinition,
 } from './ai-provider.interface.js';
 
+const MAX_INTENTOS = 4;
+const BACKOFF_BASE_MS = 1_000;
+/** 503 = saturacion del tier gratuito, 429 = cuota, 500 = fallo transitorio. */
+const REINTENTABLES = new Set([429, 500, 503]);
+
 /** Una imagen para analizar: bytes en base64 y su tipo MIME. */
 export interface ImagePart {
   data: string;
@@ -110,22 +115,43 @@ export class GeminiProvider implements AIProvider {
 
     const start = Date.now();
     const url = `${this.baseUrl}/models/${this.model}:generateContent`;
+    let ultimoEstado = 0;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
-      body: JSON.stringify(body),
-    });
+    for (let intento = 0; intento < MAX_INTENTOS; intento++) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const data = (await response.json()) as GeminiResponse;
+        logger.debug(
+          { model: this.model, duration: Date.now() - start, intento: intento + 1 },
+          'Gemini API response'
+        );
+        return data;
+      }
+
+      ultimoEstado = response.status;
       const errorText = await response.text();
-      logger.error({ status: response.status, error: errorText }, 'Gemini API error');
-      throw new Error(`Gemini API error: ${response.status}`);
+
+      if (!REINTENTABLES.has(response.status) || intento === MAX_INTENTOS - 1) {
+        logger.error({ status: response.status, error: errorText }, 'Gemini API error');
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      // El tier gratuito devuelve 503 por saturación y 429 por cuota; ambos
+      // suelen resolverse esperando un poco.
+      const espera = BACKOFF_BASE_MS * 2 ** intento;
+      logger.warn(
+        { status: response.status, intento: intento + 1, espera },
+        'Gemini saturado, reintentando'
+      );
+      await new Promise((resolve) => setTimeout(resolve, espera));
     }
 
-    const data = (await response.json()) as GeminiResponse;
-    logger.debug({ model: this.model, duration: Date.now() - start }, 'Gemini API response');
-    return data;
+    throw new Error(`Gemini API error: ${ultimoEstado}`);
   }
 
   private textOf(data: GeminiResponse): string {
