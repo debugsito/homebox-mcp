@@ -3,6 +3,8 @@ import {
   CreateEntityPayload,
   UpdateEntityPayload,
   EntityPathSegment,
+  EntityType,
+  CreateEntityTypePayload,
 } from './homebox.client.js';
 import type {
   HomeBoxEntitiesResponse,
@@ -58,6 +60,14 @@ export class HomeBoxService {
 
   async getLocationById(id: string): Promise<HomeBoxEntity> {
     return this.client.getEntityById(id);
+  }
+
+  async listEntityTypes(): Promise<EntityType[]> {
+    return this.client.listEntityTypes();
+  }
+
+  async createEntityType(payload: CreateEntityTypePayload): Promise<EntityType> {
+    return this.client.createEntityType(payload);
   }
 
   async createItem(payload: CreateEntityPayload): Promise<HomeBoxEntity> {

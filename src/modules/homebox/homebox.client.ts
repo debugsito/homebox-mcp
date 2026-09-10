@@ -38,6 +38,20 @@ export interface EntityPathSegment {
   type: string;
 }
 
+export interface EntityType {
+  id: string;
+  name: string;
+  isLocation: boolean;
+  icon?: string;
+  description?: string;
+}
+
+export interface CreateEntityTypePayload {
+  name: string;
+  isLocation: boolean;
+  icon?: string;
+}
+
 export class HomeBoxClient {
   private baseUrl: string;
   private apiKey: string;
@@ -129,6 +143,19 @@ export class HomeBoxClient {
   /** Cadena de ancestros, de la raiz hasta la propia entidad. */
   async getEntityPath(id: string): Promise<EntityPathSegment[]> {
     return this.request<EntityPathSegment[]>(`/api/v1/entities/${id}/path`);
+  }
+
+  /** Los tipos separan ubicaciones de objetos mediante isLocation. */
+  async listEntityTypes(): Promise<EntityType[]> {
+    return this.request<EntityType[]>('/api/v1/entity-types');
+  }
+
+  async createEntityType(payload: CreateEntityTypePayload): Promise<EntityType> {
+    logger.debug({ name: payload.name, isLocation: payload.isLocation }, 'Creating entity type');
+    return this.request<EntityType>('/api/v1/entity-types', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async patchEntity(id: string, payload: PatchEntityPayload): Promise<HomeBoxEntity> {
