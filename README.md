@@ -67,7 +67,7 @@ ruta completa (`Homie > Cuarto Oficina > Escritorio > Cajón 1`) en una llamada.
 | `GROQ_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=groq` |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Modelo de Groq |
 | `GEMINI_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=gemini` |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Modelo de Gemini, el que analiza las fotos |
+| `GEMINI_MODEL` | `gemini-3.6-flash` | Modelo de Gemini, el que analiza las fotos |
 | `MCP_AUTH_TOKEN` | — | Token del MCP por HTTP. Sin él, `/mcp` rechaza todo |
 
 ## MCP

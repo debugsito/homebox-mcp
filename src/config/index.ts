@@ -11,7 +11,8 @@ const envSchema = z.object({
   // Groq retiró los llama-3.x; gpt-oss-120b es el mayor con tool-calling.
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  // gemini-2.5-flash sigue en el listado pero ya no se sirve a cuentas nuevas.
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   MINIMAX_API_KEY: z.string().optional(),
   MINIMAX_MODEL: z.string().default('minimax/MiniMax-M2.7'),
   // Sin token, el transporte HTTP del MCP rechaza todo.
