@@ -14,12 +14,15 @@
     "test:watch": "vitest",
     "mcp": "tsx src/mcp/stdio.ts",
     "mcp:build": "node dist/mcp/stdio.js",
-    "seed": "tsx scripts/seed-taxonomy.ts"
+    "seed": "tsx scripts/seed-taxonomy.ts",
+    "bot": "tsx src/telegram/start.ts",
+    "bot:start": "node dist/telegram/start.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.0",
+    "grammy": "^1.46.0",
     "pino": "^9.6.0",
     "pino-pretty": "^11.3.0",
     "zod": "^3.24.1",
