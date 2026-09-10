@@ -183,6 +183,21 @@ describe('GeminiProvider', () => {
     await esperado;
   });
 
+  it('traduce el 400 de imagen ilegible a algo accionable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 400,
+        text: async () => '{"error":{"message":"Unable to process input image."}}',
+      })) as unknown as typeof fetch
+    );
+
+    await expect(
+      new GeminiProvider().describeImages('¿qué es esto?', [{ data: 'AAAA', mimeType: 'image/heic' }])
+    ).rejects.toThrow('Prueba con otra foto en JPEG o PNG');
+  });
+
   it('propaga el error de la API en vez de devolver texto vacío', async () => {
     vi.stubGlobal(
       'fetch',

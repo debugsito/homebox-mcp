@@ -79,6 +79,33 @@ export class GeminiProvider implements AIProvider {
     return this.textOf(data);
   }
 
+  /**
+   * Como describeImages pero forzando JSON con un esquema. Evita tener que
+   * rescatar el objeto de dentro de un bloque de markdown.
+   */
+  async extractFromImages<T>(
+    prompt: string,
+    images: ImagePart[],
+    responseSchema: Record<string, unknown>
+  ): Promise<T> {
+    const parts: GeminiPart[] = [
+      { text: prompt },
+      ...images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.data } })),
+    ];
+
+    const data = await this.post({
+      contents: [{ role: 'user', parts }],
+      generationConfig: { responseMimeType: 'application/json', responseSchema },
+    });
+
+    const texto = this.textOf(data);
+    try {
+      return JSON.parse(texto) as T;
+    } catch {
+      throw new Error(`Gemini devolvió algo que no es JSON: ${texto.slice(0, 200)}`);
+    }
+  }
+
   private async request(
     messages: AIMessage[],
     tools?: AIToolDefinition[]
@@ -138,6 +165,16 @@ export class GeminiProvider implements AIProvider {
 
       if (!REINTENTABLES.has(response.status) || intento === MAX_INTENTOS - 1) {
         logger.error({ status: response.status, error: errorText }, 'Gemini API error');
+
+        // Pasa con formatos que Gemini no digiere (HEIC, JPEG en CMYK) y con
+        // ficheros corruptos. Reintentar no ayuda; al usuario hay que decirle
+        // que mande otra foto, no un codigo de error.
+        if (errorText.includes('Unable to process input image')) {
+          throw new Error(
+            'No se pudo procesar la imagen. Prueba con otra foto en JPEG o PNG.'
+          );
+        }
+
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
