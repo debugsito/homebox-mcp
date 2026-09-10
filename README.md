@@ -29,6 +29,7 @@ npm run dev
 | `npm run lint` | ESLint sobre `src` |
 | `npm run mcp` | Servidor MCP por stdio |
 | `npm run seed` | Siembra la taxonomía (`--dry-run` para simular) |
+| `npm run bot` | Bot de Telegram en long polling |
 
 ## Endpoints
 
@@ -98,6 +99,18 @@ Cada petición crea y cierra su propio servidor. `GET` y `DELETE` responden 405
 porque el modo sin sesión no usa el canal SSE.
 
 Prueba de humo end-to-end: `npx tsx scripts/smoke-mcp.ts`.
+
+## Bot de Telegram
+
+Mismo registry de tools, otra interfaz. Requiere `TELEGRAM_BOT_TOKEN` y
+`TELEGRAM_ALLOWED_CHAT_IDS`; sin allowlist no responde a nadie.
+
+- **Texto** → loop de tool-calling, con historial acotado a los últimos 12 mensajes.
+- **Foto** → propuesta de qué registrar y dónde, con botones. No escribe nada hasta
+  que se confirma.
+- `/ubicaciones` lista el árbol, `/olvidar` reinicia el hilo.
+
+Las propuestas pendientes viven en memoria: caducan a los 30 minutos y hay tope de 50.
 
 ## Notas sobre la API de HomeBox
 
