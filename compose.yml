@@ -1,12 +1,15 @@
+# Compose de desarrollo, para levantar solo la API contra un HomeBox externo.
+# El despliegue real vive en el servidor, junto a HomeBox y Caddy.
 services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      target: runtime
     container_name: inventory-ai-api
-    ports:
-      - "3000:3000"
+    env_file: .env
     environment:
-      - PORT=3000
       - NODE_ENV=production
+      - PORT=3000
+    ports:
+      - 127.0.0.1:3000:3000
     restart: unless-stopped
