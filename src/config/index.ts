@@ -11,6 +11,8 @@ const envSchema = z.object({
   GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
   MINIMAX_API_KEY: z.string().optional(),
   MINIMAX_MODEL: z.string().default('minimax/MiniMax-M2.7'),
+  // Sin token, el transporte HTTP del MCP rechaza todo.
+  MCP_AUTH_TOKEN: z.string().min(32, 'MCP_AUTH_TOKEN debe tener al menos 32 caracteres').optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

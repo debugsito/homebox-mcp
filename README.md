@@ -27,6 +27,8 @@ npm run dev
 | `npm start` | Arranca desde `dist/` |
 | `npm test` | Ejecuta la suite de Vitest |
 | `npm run lint` | ESLint sobre `src` |
+| `npm run mcp` | Servidor MCP por stdio |
+| `npm run seed` | Siembra la taxonomía (`--dry-run` para simular) |
 
 ## Endpoints
 
@@ -43,6 +45,7 @@ npm run dev
 | GET | `/ai/tools` | Esquemas que se le mandan al LLM |
 | POST | `/ai/chat` | Conversación con tool-calling |
 | POST | `/ai/debug` | Inspecciona una vuelta de tool-calling |
+| POST | `/mcp` | Servidor MCP por Streamable HTTP (requiere `Bearer`) |
 
 ## Tools
 
@@ -50,7 +53,7 @@ npm run dev
 `resolve_item` · `resolve_location` · `create_item` · `update_item` · `move_item`
 
 `find_item` es la preferida para "¿dónde está X?": resuelve el nombre y devuelve la
-ruta completa (`Homie > Cuarto Oficina > Cajones Escritorio > Cajon 1`) en una llamada.
+ruta completa (`Homie > Cuarto Oficina > Escritorio > Cajón 1`) en una llamada.
 
 ## Variables de entorno
 
@@ -63,6 +66,33 @@ ruta completa (`Homie > Cuarto Oficina > Cajones Escritorio > Cajon 1`) en una l
 | `AI_PROVIDER` | `groq` | `groq` \| `gemini` \| `minimax` |
 | `GROQ_API_KEY` | — | Requerida aunque el proveedor sea otro |
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` | Modelo de Groq |
+| `MCP_AUTH_TOKEN` | — | Token del MCP por HTTP. Sin él, `/mcp` rechaza todo |
+
+## MCP
+
+Las mismas tools se exponen por MCP, con anotaciones para que el cliente
+distinga consulta de escritura (`readOnlyHint`, `destructiveHint`), más un
+recurso `homebox://locations` con el árbol completo.
+
+**stdio** — para clientes locales. En `.mcp.json` o la config del cliente:
+
+```json
+{
+  "mcpServers": {
+    "homebox": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp/stdio.ts"],
+      "cwd": "/ruta/al/repo"
+    }
+  }
+}
+```
+
+**HTTP** — `POST /mcp`, sin sesión, con `Authorization: Bearer $MCP_AUTH_TOKEN`.
+Cada petición crea y cierra su propio servidor. `GET` y `DELETE` responden 405
+porque el modo sin sesión no usa el canal SSE.
+
+Prueba de humo end-to-end: `npx tsx scripts/smoke-mcp.ts`.
 
 ## Notas sobre la API de HomeBox
 

@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class ListItemsTool implements Tool {
   public name = 'list_items';
   public description = 'List all inventory items with pagination';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = listItemsInputSchema;
 
   private service: HomeBoxService;

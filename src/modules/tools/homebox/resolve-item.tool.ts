@@ -12,6 +12,8 @@ type ResolveItemInput = z.infer<typeof resolveItemInputSchema>;
 export class ResolveItemTool implements Tool {
   public name = 'resolve_item';
   public description = 'Resolve a human item name into HomeBox item IDs';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = resolveItemInputSchema;
 
   private resolver: ItemResolverService;

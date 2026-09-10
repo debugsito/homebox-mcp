@@ -30,6 +30,8 @@ export class FindItemTool implements Tool {
   public name = 'find_item';
   public description =
     'Find an item by name and get its current location with full path. Use this for questions like "where is X" or "where are my keys". Returns item details and location in one call.';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = findItemInputSchema;
 
   private itemResolver: ItemResolverService;

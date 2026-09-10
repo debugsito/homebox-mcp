@@ -8,6 +8,8 @@ import type { LocationTreeNode } from '../../resolvers/resolver.types.js';
 export class ListLocationsTool implements Tool {
   public name = 'list_locations';
   public description = 'List all inventory locations with full paths';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = listLocationsInputSchema;
 
   private service: HomeBoxService;

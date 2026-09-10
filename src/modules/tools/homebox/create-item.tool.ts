@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class CreateItemTool implements Tool {
   public name = 'create_item';
   public description = 'Create a new inventory item';
+  public readOnly = false;
+  public destructive = false;
   public inputSchema = createItemInputSchema;
 
   private service: HomeBoxService;

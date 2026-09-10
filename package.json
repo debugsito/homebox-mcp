@@ -11,9 +11,13 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "mcp": "tsx src/mcp/stdio.ts",
+    "mcp:build": "node dist/mcp/stdio.js",
+    "seed": "tsx scripts/seed-taxonomy.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.0",
     "pino": "^9.6.0",

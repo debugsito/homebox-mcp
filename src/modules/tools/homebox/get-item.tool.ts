@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class GetItemTool implements Tool {
   public name = 'get_item';
   public description = 'Get a single inventory item by ID';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = getItemInputSchema;
 
   private service: HomeBoxService;

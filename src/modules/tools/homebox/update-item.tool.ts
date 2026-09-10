@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class UpdateItemTool implements Tool {
   public name = 'update_item';
   public description = 'Update an existing inventory item';
+  public readOnly = false;
+  public destructive = true;
   public inputSchema = updateItemInputSchema;
 
   private service: HomeBoxService;

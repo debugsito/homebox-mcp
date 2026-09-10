@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class SearchItemTool implements Tool {
   public name = 'search_item';
   public description = 'Search inventory items by text query';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = searchItemInputSchema;
 
   private service: HomeBoxService;

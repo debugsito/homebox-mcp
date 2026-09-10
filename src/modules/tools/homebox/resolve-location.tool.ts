@@ -12,6 +12,8 @@ type ResolveLocationInput = z.infer<typeof resolveLocationInputSchema>;
 export class ResolveLocationTool implements Tool {
   public name = 'resolve_location';
   public description = 'Resolve a human location name/path into HomeBox location IDs with full paths';
+  public readOnly = true;
+  public destructive = false;
   public inputSchema = resolveLocationInputSchema;
 
   private resolver: LocationResolverService;

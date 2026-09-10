@@ -4,6 +4,13 @@ export interface Tool {
   name: string;
   description: string;
   inputSchema: z.ZodType<unknown>;
+  /**
+   * Si la tool solo lee. Lo consume MCP como readOnlyHint, y es lo que separa
+   * de verdad consulta de escritura: hasta ahora eso vivia solo en el prompt.
+   */
+  readOnly: boolean;
+  /** Si modifica o borra algo existente. Crear es aditivo, no destructivo. */
+  destructive: boolean;
   execute(input: unknown): Promise<unknown>;
 }
 

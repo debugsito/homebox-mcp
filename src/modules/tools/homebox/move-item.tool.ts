@@ -6,6 +6,8 @@ import type { Tool } from '../tool.types.js';
 export class MoveItemTool implements Tool {
   public name = 'move_item';
   public description = 'Move an inventory item to a different location';
+  public readOnly = false;
+  public destructive = true;
   public inputSchema = moveItemInputSchema;
 
   private service: HomeBoxService;
