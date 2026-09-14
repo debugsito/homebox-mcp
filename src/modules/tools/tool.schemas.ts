@@ -22,6 +22,8 @@ export type ListLocationsInput = z.infer<typeof listLocationsInputSchema>;
 export const listItemsInputSchema = z.object({
   limit: z.number().int().positive().optional().default(50),
   page: z.number().int().positive().optional().default(1),
+  /** Nombre o ruta completa. Filtra a lo que hay dentro de esa ubicación. */
+  location: z.string().optional(),
 });
 
 export type ListItemsInput = z.infer<typeof listItemsInputSchema>;

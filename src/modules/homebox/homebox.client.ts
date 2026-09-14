@@ -126,10 +126,18 @@ export class HomeBoxClient {
     }
   }
 
-  async listEntities(page = 1, pageSize = 50): Promise<HomeBoxEntitiesResponse> {
-    return this.request<HomeBoxEntitiesResponse>(
-      `/api/v1/entities?page=${page}&pageSize=${pageSize}`
-    );
+  async listEntities(
+    page = 1,
+    pageSize = 50,
+    parentIds: string[] = []
+  ): Promise<HomeBoxEntitiesResponse> {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    // collectionFormat multi: un parametro repetido por cada id.
+    for (const id of parentIds) {
+      params.append('parentIds', id);
+    }
+
+    return this.request<HomeBoxEntitiesResponse>(`/api/v1/entities?${params}`);
   }
 
   async getEntityById(id: string): Promise<HomeBoxEntity> {

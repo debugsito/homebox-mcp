@@ -1,4 +1,5 @@
 import { homeBoxService, HomeBoxService } from '../../homebox/homebox.service.js';
+import { summarizeItems } from '../../homebox/item.summary.js';
 import { logger } from '../../../utils/logger.js';
 import { searchItemInputSchema } from '../tool.schemas.js';
 import type { Tool } from '../tool.types.js';
@@ -26,6 +27,6 @@ export class SearchItemTool implements Tool {
     logger.debug({ tool: this.name, query, limit }, 'Executing search_item');
 
     const result = await this.service.searchItems(query, 1, limit);
-    return result.items;
+    return summarizeItems(result.items);
   }
 }

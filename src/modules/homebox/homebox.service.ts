@@ -36,8 +36,12 @@ export class HomeBoxService {
     }
   }
 
-  async listItems(page = 1, pageSize = 50): Promise<HomeBoxEntitiesResponse> {
-    return this.client.listEntities(page, pageSize);
+  async listItems(
+    page = 1,
+    pageSize = 50,
+    parentIds: string[] = []
+  ): Promise<HomeBoxEntitiesResponse> {
+    return this.client.listEntities(page, pageSize, parentIds);
   }
 
   async listAllItems(): Promise<HomeBoxEntity[]> {
