@@ -13,6 +13,11 @@ export interface AIToolCall {
     name: string;
     arguments: string;
   };
+  /**
+   * Gemini 3 devuelve una firma con cada llamada a funcion y exige que se le
+   * devuelva en el turno siguiente. Los demas proveedores la ignoran.
+   */
+  thoughtSignature?: string;
 }
 
 export interface AIChatResponse {

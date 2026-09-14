@@ -56,7 +56,7 @@ curl localhost:3000/tools/run -H 'Content-Type: application/json' \
 | `NODE_ENV` | `development` | Entorno |
 | `HOMEBOX_URL` | — | URL de tu HomeBox |
 | `HOMEBOX_API_KEY` | — | De *Perfil › API Tokens* en HomeBox |
-| `AI_PROVIDER` | `groq` | `groq` \| `gemini` \| `minimax` |
+| `AI_PROVIDER` | `groq` | Uno o varios separados por comas: `groq,gemini` pivota al siguiente si el primero se cae |
 | `GROQ_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=groq` |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq retira modelos a menudo; ver nota abajo |
 | `GEMINI_API_KEY` | — | Obligatoria solo si `AI_PROVIDER=gemini`. Es quien analiza las fotos |
@@ -64,6 +64,24 @@ curl localhost:3000/tools/run -H 'Content-Type: application/json' \
 | `MCP_AUTH_TOKEN` | — | Mínimo 32 caracteres. Sin esto, `POST /mcp` rechaza todo |
 | `TELEGRAM_BOT_TOKEN` | — | De [@BotFather](https://t.me/botfather) |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | — | Chat ids autorizados, separados por comas |
+
+### Cadena de proveedores
+
+`AI_PROVIDER=groq,gemini` prueba Groq y pivota a Gemini ante un **429** (cuota) o un **5xx**
+(caída o saturación). Ante un 400 o un 401 falla de inmediato: eso fallaría igual en todos y
+recorrer la cadena solo retrasaría el error. Toda la cadena necesita su clave configurada — y
+se comprueba al arrancar, no cuando el primero se cae.
+
+Si quieres muchos proveedores, [LiteLLM](https://github.com/BerriAI/litellm) hace de proxy con
+formato OpenAI: apunta `GROQ_MODEL` y el `baseUrl` del proveedor de Groq a tu instancia y
+funciona sin tocar más código.
+
+> **Cada proveedor habla su propio dialecto de esquema.** Groq valida contra JSON Schema
+> 2020-12 y exige `exclusiveMinimum` numérico; Gemini solo acepta un subconjunto de OpenAPI 3.0
+> y rechaza la petición entera si esa palabra clave aparece. Gemini 3 además devuelve una
+> `thoughtSignature` con cada llamada a función y exige que se la devuelvas en el turno
+> siguiente. Está todo traducido en `toGeminiSchema()` y `toGeminiContents()`, pero si añades
+> un proveedor cuenta con tener que hacer lo mismo.
 
 > **Los modelos caducan.** Los proveedores retiran modelos sin avisar y el síntoma es un 404
 > *con la clave puesta* (una clave mala da 401). Comprueba qué tienes disponible con

@@ -6,7 +6,13 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   HOMEBOX_URL: z.string().url(),
   HOMEBOX_API_KEY: z.string().min(1),
-  AI_PROVIDER: z.enum(['groq', 'gemini', 'minimax']).default('groq'),
+  // Acepta una cadena: "groq,gemini" prueba Groq y pivota a Gemini si se queda
+  // sin cuota o esta caido. Un solo valor sigue funcionando igual.
+  AI_PROVIDER: z
+    .string()
+    .default('groq')
+    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
+    .pipe(z.array(z.enum(['groq', 'gemini', 'minimax'])).nonempty()),
   GROQ_API_KEY: z.string().optional(),
   // Groq retiró los llama-3.x; gpt-oss-120b es el mayor con tool-calling.
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
@@ -39,13 +45,17 @@ const KEY_POR_PROVEEDOR = {
 
 const parsed = envSchema
   .superRefine((env, ctx) => {
-    const required = KEY_POR_PROVEEDOR[env.AI_PROVIDER];
-    if (!env[required]) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [required],
-        message: `${required} es obligatoria cuando AI_PROVIDER=${env.AI_PROVIDER}`,
-      });
+    // Toda la cadena necesita su clave: descubrir que falta justo cuando el
+    // primero se cae seria el peor momento.
+    for (const proveedor of env.AI_PROVIDER) {
+      const required = KEY_POR_PROVEEDOR[proveedor];
+      if (!env[required]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [required],
+          message: `${required} es obligatoria porque AI_PROVIDER incluye "${proveedor}"`,
+        });
+      }
     }
   })
   .safeParse(process.env);

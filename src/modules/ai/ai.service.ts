@@ -6,6 +6,7 @@ import { getToolsForLLM } from './tool-converter.js';
 import { GroqProvider } from './providers/groq.provider.js';
 import { GeminiProvider } from './providers/gemini.provider.js';
 import { MinimaxProvider } from './providers/minimax.provider.js';
+import { FallbackProvider } from './providers/fallback.provider.js';
 import type { AIProvider, AIMessage, AIToolCall, AIToolDefinition } from './providers/index.js';
 
 export interface ToolCallRecord {
@@ -39,31 +40,31 @@ export class AIService {
     this.provider = this.createProvider();
   }
 
-  /** Antes se reportaba GROQ_MODEL fuera cual fuera el proveedor. */
-  private get model(): string {
-    switch (config.AI_PROVIDER) {
-      case 'gemini':
-        return config.GEMINI_MODEL;
-      case 'minimax':
-        return config.MINIMAX_MODEL;
-      default:
-        return config.GROQ_MODEL;
-    }
+  /** El primero de la cadena, que es el que responde salvo incidencia. */
+  private get proveedorPrincipal(): Proveedor {
+    return config.AI_PROVIDER[0];
   }
 
-  private createProvider(): AIProvider {
-    const { AI_PROVIDER } = config;
+  private get model(): string {
+    return modeloDe(this.proveedorPrincipal);
+  }
 
-    switch (AI_PROVIDER) {
-      case 'groq':
-        return new GroqProvider();
-      case 'gemini':
-        return new GeminiProvider();
-      case 'minimax':
-        return new MinimaxProvider();
-      default:
-        throw new Error(`Unknown AI provider: ${AI_PROVIDER}`);
+  /**
+   * Un solo proveedor se usa directo; varios se encadenan para pivotar cuando
+   * el primero se queda sin cuota o esta caido.
+   */
+  private createProvider(): AIProvider {
+    const cadena = config.AI_PROVIDER.map((nombre) => ({
+      nombre,
+      provider: instanciar(nombre),
+    }));
+
+    if (cadena.length === 1) {
+      return cadena[0].provider;
     }
+
+    logger.info({ cadena: cadena.map((c) => c.nombre) }, 'Cadena de proveedores activa');
+    return new FallbackProvider(cadena);
   }
 
   async chat(message: string, history: AIMessage[] = []): Promise<ChatResponse> {
@@ -80,7 +81,7 @@ export class AIService {
 
     logger.info({
       historyLength: history.length,
-      provider: config.AI_PROVIDER,
+      provider: this.proveedorPrincipal,
       model: this.model,
       toolsCount: tools.length,
     }, 'AI chat started');
@@ -147,14 +148,14 @@ export class AIService {
         duration,
         tokensUsed: response.usage.totalTokens,
         iterations: iteration + 1,
-        provider: config.AI_PROVIDER,
+        provider: this.proveedorPrincipal,
         model: this.model,
         toolsUsed: executedTools.map((t) => t.name),
       }, 'AI chat completed');
 
       return {
         response: choice.content || 'No pude generar una respuesta.',
-        provider: config.AI_PROVIDER,
+        provider: this.proveedorPrincipal,
         model: this.model,
         toolCalls: executedTools,
       };
@@ -163,7 +164,7 @@ export class AIService {
     logger.warn({ iterations: this.maxIterations }, 'Max tool call iterations reached');
     return {
       response: 'La conversación se extendió demasiado. Por favor reformula tu pregunta.',
-      provider: config.AI_PROVIDER,
+      provider: this.proveedorPrincipal,
       model: this.model,
       toolCalls: executedTools,
     };
@@ -286,5 +287,29 @@ export class AIService {
       logger.error({ tool: name, duration: Date.now() - start, error: errorMessage }, 'Tool execution failed');
       return { error: errorMessage };
     }
+  }
+}
+
+type Proveedor = (typeof config.AI_PROVIDER)[number];
+
+function instanciar(nombre: Proveedor): AIProvider {
+  switch (nombre) {
+    case 'groq':
+      return new GroqProvider();
+    case 'gemini':
+      return new GeminiProvider();
+    case 'minimax':
+      return new MinimaxProvider();
+  }
+}
+
+function modeloDe(nombre: Proveedor): string {
+  switch (nombre) {
+    case 'gemini':
+      return config.GEMINI_MODEL;
+    case 'minimax':
+      return config.MINIMAX_MODEL;
+    default:
+      return config.GROQ_MODEL;
   }
 }

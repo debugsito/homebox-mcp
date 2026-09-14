@@ -6,11 +6,57 @@ import type {
   AIMessage,
   AIToolDefinition,
 } from './ai-provider.interface.js';
+import { ProviderError } from './provider.error.js';
 
 const MAX_INTENTOS = 4;
 const BACKOFF_BASE_MS = 1_000;
 /** 503 = saturacion del tier gratuito, 429 = cuota, 500 = fallo transitorio. */
 const REINTENTABLES = new Set([429, 500, 503]);
+
+/**
+ * Gemini solo acepta un subconjunto de OpenAPI 3.0 en las declaraciones de
+ * funcion, y rechaza la peticion entera si aparece una palabra clave que no
+ * conoce. Groq, en cambio, valida contra JSON Schema 2020-12 y exige
+ * exclusiveMinimum numerico. Son dialectos distintos: hay que traducir.
+ */
+const CLAVES_QUE_ACEPTA_GEMINI = new Set([
+  'type',
+  'format',
+  'description',
+  'nullable',
+  'enum',
+  'items',
+  'properties',
+  'required',
+  'anyOf',
+]);
+
+export function toGeminiSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(toGeminiSchema);
+  }
+  if (schema === null || typeof schema !== 'object') {
+    return schema;
+  }
+
+  const limpio: Record<string, unknown> = {};
+  for (const [clave, valor] of Object.entries(schema as Record<string, unknown>)) {
+    if (!CLAVES_QUE_ACEPTA_GEMINI.has(clave)) {
+      continue;
+    }
+    limpio[clave] =
+      clave === 'properties'
+        ? Object.fromEntries(
+            Object.entries(valor as Record<string, unknown>).map(([k, v]) => [
+              k,
+              toGeminiSchema(v),
+            ])
+          )
+        : toGeminiSchema(valor);
+  }
+
+  return limpio;
+}
 
 /** Una imagen para analizar: bytes en base64 y su tipo MIME. */
 export interface ImagePart {
@@ -23,6 +69,7 @@ interface GeminiPart {
   inlineData?: { mimeType: string; data: string };
   functionCall?: { name: string; args: Record<string, unknown> };
   functionResponse?: { name: string; response: Record<string, unknown> };
+  thoughtSignature?: string;
 }
 
 interface GeminiContent {
@@ -125,7 +172,7 @@ export class GeminiProvider implements AIProvider {
           functionDeclarations: tools.map((t) => ({
             name: t.function.name,
             description: t.function.description,
-            parameters: t.function.parameters,
+            parameters: toGeminiSchema(t.function.parameters),
           })),
         },
       ];
@@ -170,12 +217,14 @@ export class GeminiProvider implements AIProvider {
         // ficheros corruptos. Reintentar no ayuda; al usuario hay que decirle
         // que mande otra foto, no un codigo de error.
         if (errorText.includes('Unable to process input image')) {
-          throw new Error(
+          throw new ProviderError(
+            'Gemini',
+            response.status,
             'No se pudo procesar la imagen. Prueba con otra foto en JPEG o PNG.'
           );
         }
 
-        throw new Error(`Gemini API error: ${response.status}`);
+        throw new ProviderError('Gemini', response.status);
       }
 
       // El tier gratuito devuelve 503 por saturación y 429 por cuota; ambos
@@ -188,7 +237,7 @@ export class GeminiProvider implements AIProvider {
       await new Promise((resolve) => setTimeout(resolve, espera));
     }
 
-    throw new Error(`Gemini API error: ${ultimoEstado}`);
+    throw new ProviderError('Gemini', ultimoEstado);
   }
 
   private textOf(data: GeminiResponse): string {
@@ -223,6 +272,8 @@ export function toGeminiContents(messages: AIMessage[]): GeminiContent[] {
             name: call.function.name,
             args: safeParse(call.function.arguments),
           },
+          // Sin devolverla, Gemini 3 rechaza el turno entero.
+          ...(call.thoughtSignature ? { thoughtSignature: call.thoughtSignature } : {}),
         })),
       };
     }
@@ -259,6 +310,7 @@ function mapGeminiResponse(data: GeminiResponse, text: string): AIChatResponse {
         name: p.functionCall.name,
         arguments: JSON.stringify(p.functionCall.args ?? {}),
       },
+      ...(p.thoughtSignature ? { thoughtSignature: p.thoughtSignature } : {}),
     }));
 
   return {

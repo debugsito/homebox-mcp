@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { toGeminiContents, GeminiProvider } from '../src/modules/ai/providers/gemini.provider.js';
+import { toGeminiContents, toGeminiSchema, GeminiProvider } from '../src/modules/ai/providers/gemini.provider.js';
 import type { AIMessage } from '../src/modules/ai/providers/ai-provider.interface.js';
 
 describe('toGeminiContents', () => {
@@ -47,6 +47,58 @@ describe('toGeminiContents', () => {
     ]);
 
     expect(turno.parts[0].functionResponse?.response).toEqual({ value: 'error crudo' });
+  });
+});
+
+describe('toGeminiSchema', () => {
+  it('quita exclusiveMinimum, que Gemini rechaza y Groq exige', () => {
+    const r = toGeminiSchema({
+      type: 'object',
+      properties: { limit: { type: 'integer', exclusiveMinimum: 0, default: 50 } },
+      required: [],
+    }) as { properties: { limit: Record<string, unknown> } };
+
+    expect(r.properties.limit).toEqual({ type: 'integer' });
+  });
+
+  it('conserva lo que sí entiende', () => {
+    const r = toGeminiSchema({
+      type: 'object',
+      properties: {
+        sede: { type: 'string', enum: ['Homie', 'Casa'], description: 'la sede' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['sede'],
+    }) as Record<string, unknown>;
+
+    expect(r).toEqual({
+      type: 'object',
+      properties: {
+        sede: { type: 'string', enum: ['Homie', 'Casa'], description: 'la sede' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['sede'],
+    });
+  });
+
+  it('limpia también los objetos anidados', () => {
+    const r = toGeminiSchema({
+      type: 'object',
+      properties: {
+        donde: { type: 'object', properties: { n: { type: 'number', exclusiveMinimum: 0 } } },
+      },
+    }) as { properties: { donde: { properties: { n: Record<string, unknown> } } } };
+
+    expect(r.properties.donde.properties.n).toEqual({ type: 'number' });
+  });
+
+  it('no confunde una propiedad llamada como una palabra clave', () => {
+    const r = toGeminiSchema({
+      type: 'object',
+      properties: { type: { type: 'string' }, items: { type: 'string' } },
+    }) as { properties: Record<string, unknown> };
+
+    expect(Object.keys(r.properties)).toEqual(['type', 'items']);
   });
 });
 
@@ -129,6 +181,37 @@ describe('GeminiProvider', () => {
       name: 'find_item',
       arguments: '{"query":"hdmi"}',
     });
+  });
+
+  it('devuelve la thoughtSignature que Gemini 3 exige de vuelta', () => {
+    const [turno] = toGeminiContents([
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          {
+            id: 'x',
+            type: 'function',
+            function: { name: 'find_item', arguments: '{}' },
+            thoughtSignature: 'firma-abc',
+          },
+        ],
+      },
+    ]);
+
+    expect(turno.parts[0].thoughtSignature).toBe('firma-abc');
+  });
+
+  it('no inventa una firma cuando el proveedor no la manda', () => {
+    const [turno] = toGeminiContents([
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ id: 'x', type: 'function', function: { name: 'find_item', arguments: '{}' } }],
+      },
+    ]);
+
+    expect(turno.parts[0]).not.toHaveProperty('thoughtSignature');
   });
 
   it('reintenta ante un 503 y acaba devolviendo la respuesta', async () => {

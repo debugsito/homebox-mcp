@@ -6,6 +6,7 @@ import type {
   AIMessage,
   AIToolDefinition,
 } from './ai-provider.interface.js';
+import { ProviderError } from './provider.error.js';
 
 export class GroqProvider implements AIProvider {
   private baseUrl = 'https://api.groq.com/openai/v1';
@@ -61,7 +62,7 @@ export class GroqProvider implements AIProvider {
       if (!response.ok) {
         const errorText = await response.text();
         logger.error({ status: response.status, error: errorText }, 'Groq API error');
-        throw new Error(`Groq API error: ${response.status}`);
+        throw new ProviderError('Groq', response.status);
       }
 
       const data = await response.json() as GroqResponse;
